@@ -966,6 +966,8 @@ function filterFood(cat,btn){
 // CART RENDER
 // ═══════════════════════
 const FREE_THRESH=499;
+const DELIVERY_FEE=50;
+
 function renderCart(){
   const wrap=document.getElementById("cartBody"); wrap.innerHTML="";
   if(!cart.length){
@@ -1032,15 +1034,18 @@ function renderCart(){
       <p id="promoMsg"></p>
     </div>`;
 
-  const total=Math.max(0,sub-discount);
+  const deliveryFee = sub >= FREE_THRESH ? 0 : DELIVERY_FEE;
+  const total=Math.max(0,sub-discount+deliveryFee);
   wrap.innerHTML+=`
     <div class="order-summary">
       <h3>📋 Order Summary</h3>
       <div class="sum-row"><span>Subtotal</span><span>₹${sub}</span></div>
-      <div class="sum-row"><span>Delivery</span><span style="color:green">FREE</span></div>
+      <div class="sum-row"><span>Delivery</span><span style="color:${deliveryFee>0?'#ff3366':'green'}">${deliveryFee>0?'₹'+deliveryFee:'FREE'}</span></div>
       ${discount>0?`<div class="sum-row" style="color:green"><span>Discount</span><span>− ₹${discount}</span></div>`:""}
       <div class="sum-row total"><span>Total</span><span>₹${total}</span></div>
-    </div>
+    </div>`;
+
+  wrap.innerHTML+=`
     ${!currentUser?`
     <div style="background:linear-gradient(135deg,#fff0f5,#ffe6f0);border:2px solid #ffb3c6;border-radius:18px;padding:18px 20px;margin-bottom:16px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">👤</div>
@@ -1119,13 +1124,16 @@ function payNow(){
   if(!flat||!city||!pin){ showAddrWarn(); return; }
 
   const addrStr=[flat, document.getElementById("addrArea").value.trim(), city, pin].filter(Boolean).join(", ");
+  const sub=cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const deliveryFee = sub >= FREE_THRESH ? 0 : DELIVERY_FEE;
   const order={
     id:"ORD"+Date.now(),
     date:new Date().toLocaleString(),
     items:cart.map(i=>({name:i.name,qty:i.qty,price:i.price,note:i.note||""})),
-    subtotal:cart.reduce((s,i)=>s+i.price*i.qty,0),
+    subtotal:sub,
+    delivery:deliveryFee,
     discount,
-    total:Math.max(0,cart.reduce((s,i)=>s+i.price*i.qty,0)-discount),
+    total:Math.max(0,sub+deliveryFee-discount),
     address:addrStr,
     user:currentUser?currentUser.name:"Guest"
   };
@@ -1168,6 +1176,7 @@ function renderHistory(){
         </div>
         ${order.items.map(i=>`<div class="hist-item"><span>${i.name}${i.note?` <em>(${i.note})</em>`:""} × ${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join("")}
         ${order.discount>0?`<div style="font-size:12px;color:green;margin-top:6px;">Discount applied: −₹${order.discount}</div>`:""}
+        ${order.delivery>0?`<div style="font-size:12px;color:#ff3366;margin-top:4px;">Delivery fee: ₹${order.delivery}</div>`:""}
         <div class="hist-total">Total: ₹${order.total}</div>
         ${order.address?`<div class="hist-addr">📍 ${order.address}</div>`:""}
       </div>`;
