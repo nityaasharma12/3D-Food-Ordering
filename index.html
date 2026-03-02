@@ -673,7 +673,20 @@ const foods = [
 // ═══════════════════════
 let cart=[], quantities={}, discount=0, currentUser=null, toastTimer=null, modalFood=null;
 let orderHistory=[];
-try{ orderHistory=JSON.parse(localStorage.getItem("fdHistory")||"[]"); }catch(e){}
+
+// Load order history per user
+function loadUserHistory(){
+  if(currentUser){
+    try{
+      orderHistory = JSON.parse(localStorage.getItem("fdHistory_"+currentUser.email)||"[]");
+    }catch(e){}
+  } else {
+    try{
+      orderHistory = JSON.parse(localStorage.getItem("fdHistory")||"[]");
+    }catch(e){}
+  }
+}
+loadUserHistory();
 
 // ═══════════════════════
 // FLOATIES
@@ -769,6 +782,7 @@ function doSignup(){
   users[email]={name,email,phone,pw};
   try{localStorage.setItem("fdUsers",JSON.stringify(users));}catch(e){}
   currentUser={name,email,phone};
+  loadUserHistory();
   showWelcome(name,"new");
 }
 
@@ -785,10 +799,11 @@ function doLogin(){
   if(!users[email]){globalErr("loginGlobalErr","❌ No account with this email. Please sign up.");return;}
   if(users[email].pw!==pw){globalErr("loginGlobalErr","❌ Incorrect password. Try again.");return;}
   currentUser={name:users[email].name,email,phone:users[email].phone};
+  loadUserHistory();
   showWelcome(currentUser.name,"returning");
 }
 
-function skipAuth(){ currentUser=null; showWelcome("Guest","guest"); }
+function skipAuth(){ currentUser=null; loadUserHistory(); showWelcome("Guest","guest"); }
 
 function showWelcome(name,type){
   const av=document.getElementById("welcomeAvatar");
@@ -1138,7 +1153,10 @@ function payNow(){
     user:currentUser?currentUser.name:"Guest"
   };
   orderHistory.unshift(order);
-  try{localStorage.setItem("fdHistory",JSON.stringify(orderHistory));}catch(e){}
+  try{
+    const historyKey = currentUser ? "fdHistory_"+currentUser.email : "fdHistory";
+    localStorage.setItem(historyKey,JSON.stringify(orderHistory));
+  }catch(e){}
 
   cart=[]; discount=0; updateCount();
   foods.forEach(f=>updateCardBadge(f.name));
@@ -1162,6 +1180,9 @@ function payNow(){
 // ORDER HISTORY
 // ═══════════════════════
 function renderHistory(){
+  // Reload history for current user
+  loadUserHistory();
+  
   const wrap=document.getElementById("histBody"); wrap.innerHTML="";
   if(!orderHistory.length){
     wrap.innerHTML=`<div class="hist-empty">📋 No orders yet!<br><button class="back-btn" style="margin-top:20px" onclick="goToMenu()">Browse Menu</button></div>`;
@@ -1230,6 +1251,7 @@ function saveProfile(){
 function doLogout(){
   currentUser=null; cart=[]; discount=0; updateCount();
   foods.forEach(f=>updateCardBadge(f.name));
+  loadUserHistory();
   showPage("heroPage");
 }
 
